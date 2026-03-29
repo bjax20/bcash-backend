@@ -1,5 +1,6 @@
 package com.example.wallet.service;
 
+import com.example.wallet.repository.TransactionRepository;
 import com.example.wallet.repository.UserRepository;
 import com.example.wallet.repository.WalletRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,17 +31,17 @@ class WalletServiceTest {
     private WalletRepository walletRepository;
 
     private final String testPhone = "09123456789";
-
+    @Autowired
+    private TransactionRepository transactionRepository;
     @BeforeEach
     void setUp() {
-        // Clear everything first
+        // 2. Clear in the correct order: Child -> Parent
+        transactionRepository.deleteAll();
         walletRepository.deleteAll();
         userRepository.deleteAll();
 
-        // Register a user (this automatically creates their wallet via UserService)
+        // 3. Setup fresh data
         userService.registerUser("Test User", testPhone, "password123");
-
-        // Give the test user an initial balance
         walletService.deposit(testPhone, new BigDecimal("100.00"));
     }
 

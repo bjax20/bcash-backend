@@ -34,7 +34,7 @@ public class SecurityIntegrationTest {
     void shouldReturn403WhenAccessingProtectedResourceWithoutToken() throws Exception {
         // We are NOT using @WithMockUser here
         mockMvc.perform(get("/wallets/09123456789/balance"))
-                .andExpect(status().isUnauthorized()); // Or 401/403 depending on your config
+                .andExpect(status().isForbidden()); // Or 401/403 depending on your config
     }
 
     @Test
