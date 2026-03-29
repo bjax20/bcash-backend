@@ -1,0 +1,10 @@
+spring.application.name=wallet-api
+server.port=9090
+spring.datasource.url=jdbc:postgresql://YOUR_DB_URL:5432/bank?sslmode=require&channelBinding=require
+spring.datasource.username=YOUR_DB_USER
+spring.datasource.password=YOUR_DB_PASSWORD
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
+springdoc.override-with-generic-response=false
+jwt.secret=${JWT_SECRET}
+jwt.expiration=86400000
