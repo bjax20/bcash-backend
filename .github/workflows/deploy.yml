@@ -56,7 +56,7 @@ jobs:
             # 4. Run with your placeholder variables from application.properties
             docker run -d \
               --name wallet-app \
-              -p 80:9090 \
+              -p 9090:9090 \
               --restart always \
               -e SPRING_PROFILES_ACTIVE=prod \
               -e SPRING_DATASOURCE_URL="${{ secrets.SPRING_DATASOURCE_URL }}" \
