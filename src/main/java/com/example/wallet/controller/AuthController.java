@@ -24,13 +24,17 @@ public class AuthController {
         return ResponseEntity.ok("User registered successfully");
     }
 
+
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
         try {
-            String token = authService.login(request.getPhoneNumber(), request.getPassword());
-            return ResponseEntity.ok(new LoginResponse(token));
+
+            // The service now returns the full object {token, user}
+            LoginResponse response = authService.login(request.getPhoneNumber(), request.getPassword());
+
+           // Return the response object directly
+            return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
-            // This will be caught by your GlobalExceptionHandler and return 401/400
             throw e;
         }
     }

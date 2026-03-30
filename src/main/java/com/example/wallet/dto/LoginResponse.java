@@ -1,7 +1,18 @@
 package com.example.wallet.dto;
 
 /**
- * A simple record to wrap the JWT token in a JSON object: {"token": "..."}
+ * Composite response containing the JWT and essential user profile data.
  */
-public record LoginResponse(String token) {
+public record LoginResponse(
+        String token,
+        UserView user
+) {
+    /**
+     * Minimalist view of the user for frontend consumption.
+     * Excludes sensitive data like password hashes or heavy transaction lists.
+     */
+    public record UserView(
+            String name,
+            String phoneNumber
+    ) {}
 }

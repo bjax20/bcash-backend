@@ -1,6 +1,7 @@
 package com.example.wallet.controller;
 
 import com.example.wallet.config.SecurityConfig;
+import com.example.wallet.dto.LoginResponse;
 import com.example.wallet.exception.AuthenticationException;
 import com.example.wallet.exception.GlobalExceptionHandler;
 import com.example.wallet.security.JwtAuthenticationFilter;
@@ -52,10 +53,13 @@ public class AuthControllerTest {
     }
 
     @Test
-    void shouldLoginAndReturnToken() throws Exception {
-        // Arrange: Mock the auth service to return a fake JWT
+    void shouldLoginAndReturnTokenAndUser() throws Exception {
+        // Arrange
+        LoginResponse.UserView mockUser = new LoginResponse.UserView("Juan Dela Cruz", "09123456789");
+        LoginResponse mockResponse = new LoginResponse("mock-jwt-token", mockUser);
+
         when(authService.login("09123456789", "securePassword123"))
-                .thenReturn("mock-jwt-token");
+                .thenReturn(mockResponse);
 
         // Act & Assert
         mockMvc.perform(post("/auth/login")
@@ -67,9 +71,12 @@ public class AuthControllerTest {
                 }
             """))
                 .andExpect(status().isOk())
-                .andExpect((ResultMatcher) jsonPath("$.token").value("mock-jwt-token"));
+                // Verify Token
+                .andExpect(jsonPath("$.token").value("mock-jwt-token"))
+                // Verify Nested User Object
+                .andExpect(jsonPath("$.user.name").value("Juan Dela Cruz"))
+                .andExpect(jsonPath("$.user.phoneNumber").value("09123456789"));
     }
-
     @Test
     void shouldReturn401WhenLoginFails() throws Exception {
         when(authService.login(anyString(), anyString()))
