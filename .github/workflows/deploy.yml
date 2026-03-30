@@ -4,20 +4,32 @@ on:
   push:
     branches: [ main ]
 
+# Fixes the Node.js 20 warning
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
       - name: Login to Docker Hub
-        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+        # This check prevents the "Empty Username" error you saw
+        run: |
+          if [ -z "${{ secrets.DOCKER_USERNAME }}" ]; then
+            echo "ERROR: DOCKER_USERNAME secret is missing in GitHub Settings!"
+            exit 1
+          fi
+          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
       - name: Build and Push Docker Image
         run: |
-          # Build using the Dockerfile in your root directory
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/wallet-app:latest .
-          docker push ${{ secrets.DOCKER_USERNAME }}/wallet-app:latest
+          # Use the lowercase version of your username for Docker compatibility
+          REPO_NAME=$(echo "${{ secrets.DOCKER_USERNAME }}" | tr '[:upper:]' '[:lower:]')
+          docker build -t $REPO_NAME/wallet-app:latest .
+          docker push $REPO_NAME/wallet-app:latest
 
   deploy:
     needs: build-and-push
@@ -31,25 +43,27 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             # 1. Login to Docker Hub on VPS
-            echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+            REPO_NAME=$(echo "${{ secrets.DOCKER_USERNAME }}" | tr '[:upper:]' '[:lower:]')
+            echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "$REPO_NAME" --password-stdin
             
             # 2. Stop and remove the old container
             docker stop wallet-app || true
             docker rm wallet-app || true
             
             # 3. Pull the fresh image
-            docker pull ${{ secrets.DOCKER_USERNAME }}/wallet-app:latest
+            docker pull $REPO_NAME/wallet-app:latest
             
-            # 4. Run with corrected ports and all DB secrets
-            # -p 80:9090 maps the web port (80) to your app's internal port (9090)
+            # 4. Run with your placeholder variables from application.properties
             docker run -d \
               --name wallet-app \
               -p 80:9090 \
               --restart always \
-              -e SPRING_DATASOURCE_URL="${{ secrets.DB_URL }}" \
-              -e SPRING_DATASOURCE_USERNAME="${{ secrets.DB_USERNAME }}" \
-              -e SPRING_DATASOURCE_PASSWORD="${{ secrets.DB_PASSWORD }}" \
-              ${{ secrets.DOCKER_USERNAME }}/wallet-app:latest
+              -e SPRING_PROFILES_ACTIVE=prod \
+              -e SPRING_DATASOURCE_URL="${{ secrets.SPRING_DATASOURCE_URL }}" \
+              -e SPRING_DATASOURCE_USERNAME="${{ secrets.SPRING_DATASOURCE_USERNAME }}" \
+              -e SPRING_DATASOURCE_PASSWORD="${{ secrets.SPRING_DATASOURCE_PASSWORD }}" \
+              -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+              $REPO_NAME/wallet-app:latest
             
-            # 5. Optional: Clean up old unused images to save disk space on your VPS
+            # 5. Clean up old images to save space on your 4GB VPS
             docker image prune -f
