@@ -1,0 +1,55 @@
+name: Deploy Spring Boot to Hetzner
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+      - name: Build and Push Docker Image
+        run: |
+          # Build using the Dockerfile in your root directory
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/wallet-app:latest .
+          docker push ${{ secrets.DOCKER_USERNAME }}/wallet-app:latest
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.VPS_IP }}
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # 1. Login to Docker Hub on VPS
+            echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+            
+            # 2. Stop and remove the old container
+            docker stop wallet-app || true
+            docker rm wallet-app || true
+            
+            # 3. Pull the fresh image
+            docker pull ${{ secrets.DOCKER_USERNAME }}/wallet-app:latest
+            
+            # 4. Run with corrected ports and all DB secrets
+            # -p 80:9090 maps the web port (80) to your app's internal port (9090)
+            docker run -d \
+              --name wallet-app \
+              -p 80:9090 \
+              --restart always \
+              -e SPRING_DATASOURCE_URL="${{ secrets.DB_URL }}" \
+              -e SPRING_DATASOURCE_USERNAME="${{ secrets.DB_USERNAME }}" \
+              -e SPRING_DATASOURCE_PASSWORD="${{ secrets.DB_PASSWORD }}" \
+              ${{ secrets.DOCKER_USERNAME }}/wallet-app:latest
+            
+            # 5. Optional: Clean up old unused images to save disk space on your VPS
+            docker image prune -f
